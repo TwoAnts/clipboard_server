@@ -1,4 +1,4 @@
-# ClipBoard-Server
+# Clipboard-Server
 
 [中文说明](readme.zh-cn.md)
 
@@ -6,13 +6,13 @@ Pure Web Implement.
 
 Use WebSocket to sync with each other.
 
-# Use Case 
+## Use Case 
 
-When you want to copy some text crossing devices, you can use browser to open this page.
+When you want to copy some text crossing devices, you can use browser and open the page.
 
 Paste and send content, very simple.
 
-# Todo
+## Todo
 
 - [ ] Provide QR Code for the page URL
 - [ ] Build docker image
