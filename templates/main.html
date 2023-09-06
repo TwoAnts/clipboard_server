@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>{{ escape(handler.settings["title"]) }}</title>
+  </head>
+  <style>
+    .text {
+      font-size: 2em;
+    }
+
+    textarea {
+      min-height: 52vh;
+      resize: none;
+      overflow: auto;
+      -webkit-border-radius: 5px;
+      -moz-border-radius: 5px;
+      border-radius: 5px;
+      border: dotted 0.12em #c9c9c9;
+      outline: none;
+    }
+
+    textarea:focus::placeholder {
+      color: transparent;
+    }
+
+    textarea::placeholder {
+      color: #c9c9c9;
+    }
+
+    button {
+      margin: 1vw;
+      padding-left: 10vw;
+      padding-right: 10vw;
+    }
+
+    @media screen  and (max-device-width: 480px) and (orientation: portrait) { 
+      .text {
+        font-size: 4em;
+      }
+
+      textarea {
+        overflow: hidden;
+      }
+
+      button {
+        margin: 1vw;
+        padding-left: 5vw;
+        padding-right: 5vw;
+      }
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .hidden-ease {
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0s 2s, opacity 2s linear;
+    }
+
+    </style>
+  <body>
+    <h1 class="text">Clipboard | <a id="ws-status">Connecting</a>: <a id="sync-status">Idle</a></h1>
+    
+    <div>
+      <button type="button" class="text" onclick="readFromClipboard()" id="paste-btn">Paste</button>
+      <button type="button" class="text" style="float:right;" onclick="updateClipboard()" id="copy-btn">Copy</button>
+    </div>
+    <div style="display: flex">
+      <textarea class="text" style="flex: 1;" placeholder="Paste to clipboard" id="content"></textarea>
+    </div>
+    <div>
+      <button type="button" class="text" onclick="sendContent();" id="send-btn">Send</button>
+      <button type="button" class="text hidden" onclick="reconnect()" id="reconnect-btn">Reconnect</button>
+      <button type="button" class="text" style="float:right;" onclick="resetAll()" id="clear-btn">Clear</button>
+    </div>
+    <p style="text-align: center;padding: 0%;margin: 0%;">
+      <a class="text hidden" style="padding: 0%;margin: 0%;" id="copy-status"></a>
+    </p>
+  </body>
+  <script>
+    var content = document.getElementById("content");
+    var wsStatus = document.getElementById("ws-status");
+    var syncStatus = document.getElementById("sync-status");
+    var copyStatus = document.getElementById("copy-status");
+    var reconnectBtn = document.getElementById("reconnect-btn");
+
+    function hashNumStr(num) {
+      return "0x" + (num % 1031).toString(16);
+    }
+
+    function connect() {
+      var ws = new WebSocket("ws://" + location.host + "/ws");
+      ws.onopen = function() {
+        wsStatus.textContent = "Connected";
+        sendContent();
+        reconnectBtn.classList.add("hidden");
+      };
+      ws.onmessage = function (e) {
+        let msg = JSON.parse(e.data);
+        if (msg.action == "confirm") {
+          syncStatus.textContent = "Send Done(" + msg.sendNum + ")";
+        } else if (msg.action == "assignId") {
+          wsStatus.textContent = "Connected(" + hashNumStr(msg.id) + ")";
+        } else {
+          syncStatus.textContent = "Recv From(" + hashNumStr(msg.srcId) + ")";
+          content.value = msg.content;
+        }
+      };
+      ws.onerror = function(event) {
+        wsStatus.textContent = "Connect Error";
+        syncStatus.textContent = "Idle";
+        console.log("WebSocket error: ", event);
+        reconnectBtn.classList.remove("hidden");
+      };
+      
+      ws.onclose = function() {
+        wsStatus.textContent = "Disconnected";
+        syncStatus.textContent = "Idle";
+        reconnectBtn.classList.remove("hidden");
+      };
+
+      return ws;
+    }
+
+    var ws = connect();
+
+    function sendContent() {
+      if (content.value == ''){
+        syncStatus.textContent = "Idle";
+        return;
+      }
+
+      if (ws.readyState == WebSocket.OPEN){
+        syncStatus.textContent = "Send ...";
+        ws.send(content.value);
+      }
+    }
+
+    function reconnect() {
+      ws = connect();
+    }
+
+    function resetAll() {
+      content.value = "";
+      syncStatus.textContent = "Idle";
+    }
+
+    function readFromClipboard() {
+      navigator.clipboard
+        .readText()
+        .then(function(clipText) {content.value = clipText;});
+    }
+
+    function displayCopyStatus(text) {
+      copyStatus.textContent = text;
+      copyStatus.classList.remove("hidden-ease");
+      copyStatus.classList.remove("hidden");
+      setTimeout(function(){ copyStatus.classList.add("hidden-ease"); }, 1000);
+      setTimeout(function(){ copyStatus.classList.add("hidden"); }, 3000);
+    }
+
+    function updateClipboard() {
+      if (content.value == "") {
+        return;
+      }
+      navigator.clipboard.writeText(content.value).then(
+        function() {
+          displayCopyStatus("Copy done!"); 
+        },
+        function() {
+          displayCopyStatus("Copy failed!"); 
+        },
+      );
+    }
+
+  </script>
+</html>
