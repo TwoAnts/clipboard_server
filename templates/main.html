@@ -92,10 +92,9 @@
     }
 
     function connect() {
-      var ws = new WebSocket("ws://" + location.host + "/ws");
+      var ws = new WebSocket("wss://" + location.host + "/ws");
       ws.onopen = function() {
         wsStatus.textContent = "Connected";
-        sendContent();
         reconnectBtn.classList.add("hidden");
       };
       ws.onmessage = function (e) {
