@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <title>{{ escape(handler.settings["title"]) }}</title>
+    <script src="{{ static_url('qrcode.min.js') }}"></script>
   </head>
   <style>
     .text {
@@ -56,10 +57,31 @@
       transition: visibility 0s 2s, opacity 2s linear;
     }
 
+    #qrcode {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+    }
+
+    #qrcode-bg {
+      width: 100%;
+      height: 100%;
+      opacity: 0.2;
+      background-color: black;
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      z-index: 100;
+    }
+
     </style>
   <body>
-    <h1 class="text">Clipboard | <a id="ws-status">Connecting</a>: <a id="sync-status">Idle</a></h1>
-    
+    <h1 class="text">
+      <a onclick="return showQrCode()">Clipboard <img src = "{{ static_url('qrcode.svg') }}" style="vertical-align: middle; width: 1em;" /> </a>
+       | <a id="ws-status">Connecting</a>: <a id="sync-status">Idle</a>
+    </h1>
     <div>
       <button type="button" class="text" onclick="readFromClipboard()" id="paste-btn">Paste</button>
       <button type="button" class="text" style="float:right;" onclick="updateClipboard()" id="copy-btn">Copy</button>
@@ -75,6 +97,8 @@
     <p style="text-align: center;padding: 0%;margin: 0%;">
       <a class="text hidden" style="padding: 0%;margin: 0%;" id="copy-status"></a>
     </p>
+    <div id="qrcode" class="hidden" style="margin:auto;" onclick="return hideQrCode()"></div>
+    <div id="qrcode-bg" class="hidden" onclick="return hideQrCode()">
   </body>
   <script>
     var content = document.getElementById("content");
@@ -82,12 +106,16 @@
     var syncStatus = document.getElementById("sync-status");
     var copyStatus = document.getElementById("copy-status");
     var reconnectBtn = document.getElementById("reconnect-btn");
+    var qrcodeImage = document.getElementById("qrcode");
+    var qrcodeBg = document.getElementById("qrcode-bg");
+    var connectErr = false;
 
     function hashNumStr(num) {
-      return "0x" + (num % 1031).toString(16);
+      return "0x" + (num % 1031).toString(16);  // magic num to make id shorter
     }
 
     function connect() {
+      connectErr = false;
       var ws = new WebSocket("wss://" + location.host + "/ws");
       ws.onopen = function() {
         wsStatus.textContent = "Connected";
@@ -105,6 +133,7 @@
         }
       };
       ws.onerror = function(event) {
+        connectErr = true;
         wsStatus.textContent = "Connect Error";
         syncStatus.textContent = "Idle";
         console.log("WebSocket error: ", event);
@@ -112,6 +141,7 @@
       };
       
       ws.onclose = function() {
+        if (connectErr) return;
         wsStatus.textContent = "Disconnected";
         syncStatus.textContent = "Idle";
         reconnectBtn.classList.remove("hidden");
@@ -169,6 +199,29 @@
           displayCopyStatus("Copy failed!"); 
         },
       );
+    }
+
+    var cw = window.innerWidth;
+    var ch = window.innerHeight;
+    var qr_width = (cw > ch) ? (ch * 0.65) : (cw * 0.65);
+    
+    var qrcode = new QRCode(qrcodeImage, {
+        width : qr_width,
+        height : qr_width
+    });
+
+    qrcode.makeCode(location.href);
+
+    function showQrCode() {
+      qrcodeImage.classList.remove("hidden");
+      qrcodeBg.classList.remove("hidden");
+      return false;
+    }
+
+    function hideQrCode() {
+      qrcodeImage.classList.add("hidden");
+      qrcodeBg.classList.add("hidden");
+      return false;
     }
 
   </script>

@@ -26,6 +26,7 @@ cfg_file = os.path.join(PRJ_DIR, 'settings.cfg')
 if os.path.exists(cfg_file):
     tornado.autoreload.watch(cfg_file)
     tornado.options.parse_config_file(cfg_file, final=False)
+tornado.options.parse_command_line()
 
 WS_CLIENTS = set()
 
@@ -37,9 +38,9 @@ if options.debug:
     else:
         logger.setLevel(logging.INFO)
 
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(tornado.log.LogFormatter(color=False))
-logger.addHandler(handler)
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(tornado.log.LogFormatter(color=False))
+        logger.addHandler(handler)
 
 class BroadcastWebSocket(tornado.websocket.WebSocketHandler):
     def open(self):
@@ -66,6 +67,8 @@ class BroadcastWebSocket(tornado.websocket.WebSocketHandler):
 
 class MainHandler(tornado.web.RequestHandler):
     def prepare(self):
+        if not self.settings['ssl_enabled']:
+            return
         proto = self.request.protocol
         if 'X-Forwarded-Proto' in self.request.headers:
             proto =  self.request.headers['X-Forwarded-Proto']
@@ -79,12 +82,13 @@ class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("main.html") 
 
-def make_app():
+def make_app(ssl_enabled=False):
     settings = dict(
         title="Clipboard by lzmyhzy@gmail.com",
         template_path=os.path.join(PRJ_DIR, "templates"),
         static_path=os.path.join(PRJ_DIR, "static"),
         debug=options.debug,
+        ssl_enabled=ssl_enabled,
     )
 
     return tornado.web.Application([
@@ -93,12 +97,14 @@ def make_app():
     ], **settings)
 
 async def main():
-    ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_ctx.load_cert_chain(os.path.join(PRJ_DIR, "certs", "cs.crt"),
-                            os.path.join(PRJ_DIR, "certs", "cs.key"))
-    app = make_app()
+    ssl_enabled = os.path.exists(os.path.join(PRJ_DIR, "certs", "cs.crt"))
+    app = make_app(ssl_enabled)
     app.listen(options.port)
-    app.listen(options.https_port, ssl_options=ssl_ctx)
+    if ssl_enabled:
+        ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_ctx.load_cert_chain(os.path.join(PRJ_DIR, "certs", "cs.crt"),
+                                os.path.join(PRJ_DIR, "certs", "cs.key"))
+        app.listen(options.https_port, ssl_options=ssl_ctx)
     await asyncio.Event().wait()
 
 if __name__ == "__main__":

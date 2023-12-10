@@ -14,6 +14,6 @@ Paste and send content, very simple.
 
 ## Todo
 
-- [ ] Provide QR Code for the page URL
+- [x] Provide QR Code for the page URL
 - [x] Build docker image
 - [ ] Add preview in readme
