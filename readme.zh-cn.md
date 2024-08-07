@@ -10,6 +10,25 @@
 
 粘贴并发送内容，就这么简单。
 
+## docker compose
+
+```
+version: "3.8"
+services:
+  cilpboard:
+    image: rainbowhu/clipboard_server:latest
+    ports:
+      - "${CB_HTTP_PORT}:80"
+      - "${CB_HTTPS_PORT}:443"
+    environment:
+      - CS_PORT=80
+      - CS_HTTPS_PORT=443
+      - CS_CERT_ADDR=${HOST_IP} # 外部访问IP
+      - CS_HTTPS_REDIRECT_PORT=${CB_HTTPS_PORT} # 外部访问端口号
+    network_mode: "bridge"
+    restart: unless-stopped
+```
+
 ## 待实现
 
 - [x] 网页URL通过二维码呈现
